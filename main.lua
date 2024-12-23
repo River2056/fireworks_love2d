@@ -1,4 +1,5 @@
-PARTICLE_RADIUS = 1.7
+FREQ = 0.09
+PARTICLE_RADIUS = 1.5
 
 function HSL(h, s, l, a)
 	if s <= 0 then
@@ -29,8 +30,17 @@ function Particle(x, y, hu, firework)
 	if firework then
 		vel = { x = 0, y = love.math.random(-12, -8) }
 	else
-		local mult = { x = love.math.random(-3, 3), y = love.math.random(-3, 3) }
-		vel = { x = love.math.random(-3, 3), y = love.math.random(-3, 3) }
+		local mult = { x = love.math.random(5, 20), y = love.math.random(5, 20) }
+		local randomX = love.math.random()
+		if love.math.random() >= 0.5 then
+			randomX = randomX * -1
+		end
+
+		local randomY = love.math.random()
+		if love.math.random() >= 0.5 then
+			randomY = randomY * -1
+		end
+		vel = { x = randomX, y = randomY }
 
 		vel.x = vel.x * mult.x
 		vel.y = vel.y * mult.y
@@ -50,28 +60,23 @@ function Particle(x, y, hu, firework)
 
 		update = function(self)
 			if not firework then
-				local randomX = love.math.random(0.9)
-				local randomY = love.math.random(0.9)
-				local mult = { x = randomX, y = randomY }
-				print(mult.x)
-				print(mult.y)
-				self.vel.x = self.vel.x * mult.x
-				self.vel.y = self.vel.y * mult.y
-				self.lifespan = self.lifespan - 0.01
+				self.vel.x = self.vel.x * 0.9
+				self.vel.y = self.vel.y * 0.9
+				self.lifespan = self.lifespan - 0.03
 			end
 
 			self.vel.x = self.vel.x + self.acc.x
 			self.vel.y = self.vel.y + self.acc.y
 
-			self.pos.x = self.pos.x + vel.x
-			self.pos.y = self.pos.y + vel.y
+			self.pos.x = self.pos.x + self.vel.x
+			self.pos.y = self.pos.y + self.vel.y
 
 			self.acc.x = self.acc.x * 0
 			self.acc.y = self.acc.y * 0
 		end,
 
 		done = function(self)
-			return self.lifespan <= 0
+			return self.lifespan < 0 and true or false
 		end,
 
 		show = function(self)
@@ -87,9 +92,9 @@ end
 
 function Firework()
 	local hu = {
-		r = love.math.random(),
-		g = love.math.random(),
-		b = love.math.random(),
+		r = love.math.random() + 0.1,
+		g = love.math.random() + 0.1,
+		b = love.math.random() + 0.1,
 	}
 
 	return {
@@ -111,7 +116,7 @@ function Firework()
 				end
 			end
 			for i = #self.particles, 1, -1 do
-				self.particles[i]:applyForce(GRAVITY)
+				self.particles[i]:applyForce({ x = 0, y = 0.4 })
 				self.particles[i]:update()
 				if self.particles[i]:done() then
 					table.remove(self.particles, i)
@@ -137,20 +142,16 @@ function Firework()
 end
 
 function love.load()
-	love.window.setMode(430, 932, {
-		resizable = true,
-	})
 	WIDTH = love.graphics.getWidth()
 	HEIGHT = love.graphics.getHeight()
-	GRAVITY = { x = 0, y = 0.1 }
+	GRAVITY = { x = 0, y = 0.2 }
 
+	dtCount = 0
 	fireworks = {}
 end
 
 function love.update(dt)
-	local chance = love.math.random(0, 100)
-
-	if chance >= 99 then
+	if love.math.random() * 1 < FREQ then
 		table.insert(fireworks, Firework())
 	end
 
@@ -172,5 +173,60 @@ function love.draw()
 	love.graphics.setBackgroundColor(0.15, 0.15, 0.15)
 	for _, p in ipairs(fireworks) do
 		p:show()
+	end
+	love.timer.sleep(0.005)
+end
+
+function love.run()
+	if love.load then
+		love.load(love.arg.parseGameArguments(arg), arg)
+	end
+
+	-- We don't want the first frame's dt to include time taken by love.load.
+	if love.timer then
+		love.timer.step()
+	end
+
+	local dt = 0
+
+	-- Main loop time.
+	return function()
+		-- Process events.
+		if love.event then
+			love.event.pump()
+			for name, a, b, c, d, e, f in love.event.poll() do
+				if name == "quit" then
+					if not love.quit or not love.quit() then
+						return a or 0
+					end
+				end
+				love.handlers[name](a, b, c, d, e, f)
+			end
+		end
+
+		-- Update dt, as we'll be passing it to update
+		if love.timer then
+			dt = love.timer.step()
+		end
+
+		-- Call update and draw
+		if love.update then
+			love.update(dt)
+		end -- will pass 0 if love.timer is disabled
+
+		if love.graphics and love.graphics.isActive() then
+			love.graphics.origin()
+			love.graphics.clear(love.graphics.getBackgroundColor())
+
+			if love.draw then
+				love.draw()
+			end
+
+			love.graphics.present()
+		end
+
+		if love.timer then
+			love.timer.sleep(0.015) -- default 0.001
+		end
 	end
 end
