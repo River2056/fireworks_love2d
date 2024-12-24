@@ -62,7 +62,7 @@ function Particle(x, y, hu, firework)
 			if not firework then
 				self.vel.x = self.vel.x * 0.9
 				self.vel.y = self.vel.y * 0.9
-				self.lifespan = self.lifespan - 0.03
+				self.lifespan = self.lifespan - 0.029
 			end
 
 			self.vel.x = self.vel.x + self.acc.x
@@ -80,12 +80,23 @@ function Particle(x, y, hu, firework)
 		end,
 
 		show = function(self)
+			love.graphics.setBlendMode("alpha", "alphamultiply")
 			if not firework then
-				love.graphics.setColor(HSL(hu.r, hu.g, hu.b, self.lifespan))
+				love.graphics.setColor(hu.r, hu.g, hu.b, self.lifespan)
+				local points = {}
+				for i = 1, 20 do
+					table.insert(points, { self.pos.x, self.pos.y + i, hu.r, hu.g, hu.b, self.lifespan - (0.029 * i) })
+				end
+				love.graphics.points(points)
 			else
-				love.graphics.setColor(HSL(hu.r, hu.g, hu.b))
+				love.graphics.setColor(hu.r, hu.g, hu.b)
+
+				local points = {}
+				for i = 1, 3 do
+					table.insert(points, { self.pos.x, self.pos.y - i, hu.r, hu.g, hu.b, self.lifespan - (0.029 * i) })
+				end
+				love.graphics.points(points)
 			end
-			love.graphics.ellipse("fill", self.pos.x, self.pos.y, self.r, self.r)
 		end,
 	}
 end
@@ -144,6 +155,9 @@ end
 function love.load()
 	WIDTH = love.graphics.getWidth()
 	HEIGHT = love.graphics.getHeight()
+
+	love.graphics.setBlendMode("add", "alphamultiply")
+	love.window.setMode(WIDTH, HEIGHT, { borderless = true })
 	GRAVITY = { x = 0, y = 0.2 }
 
 	dtCount = 0
@@ -170,11 +184,11 @@ function love.keypressed(key)
 end
 
 function love.draw()
-	love.graphics.setBackgroundColor(0.15, 0.15, 0.15)
+	love.graphics.setBackgroundColor(0.15, 0.15, 0.15, 0.25)
+	love.graphics.setBlendMode("add", "alphamultiply")
 	for _, p in ipairs(fireworks) do
 		p:show()
 	end
-	love.timer.sleep(0.005)
 end
 
 function love.run()
